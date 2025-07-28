@@ -1,0 +1,3 @@
+[submodule "ext/penner-optimization"]
+	path = ext/penner-optimization
+	url = git@github.com:geometryprocessing/penner-optimization.git

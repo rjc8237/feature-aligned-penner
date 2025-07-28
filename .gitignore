@@ -1,0 +1,7 @@
+/build*
+/data*
+/output*
+/figures*
+/py/*.so
+*DS_Store
+*__pycache__*
