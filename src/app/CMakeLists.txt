@@ -12,6 +12,14 @@ target_link_libraries(parameterize_aligned PRIVATE
   ApplicationUtilLib
 )
 
+add_executable(add_trivial_quad_parameterization
+add_trivial_quad_parameterization.cpp
+)
+target_link_libraries(add_trivial_quad_parameterization PRIVATE
+  PennerLib
+  ApplicationUtilLib
+)
+
 # only build visualization executables if visualization enabled
 if (NOT USE_MULTIPRECISION)
 if (ENABLE_VISUALIZATION)

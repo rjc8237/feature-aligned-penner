@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
     alg_params.output_dir = "./temp";
     alg_params.error_eps = 1e-10;
     alg_params.solver = "ldlt";
-    auto [V_r, F_r, uv_r, FT_r, fn_to_f_r, endpoints_r] = generate_feature_aligned_parameterization(
+    AlignedMetricGenerator aligned_metric_generator(
         V,
         F,
         feature_edges,
@@ -105,8 +105,10 @@ int main(int argc, char* argv[])
         reference_field,
         theta,
         kappa,
-        period_jump,
-        alg_params);
+        period_jump);
+    aligned_metric_generator.optimize_relaxed(alg_params);
+    aligned_metric_generator.parameterize(false);
+    auto [V_r, F_r, uv_r, FT_r, fn_to_f_r, endpoints_r] = aligned_metric_generator.get_parameterization();
     view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", true);
     //std::string output_filename = join_path(output_dir, "optimized_corner_coords");
     //write_matrix(opt_corner_coords, output_filename, " ");
