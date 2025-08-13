@@ -20,6 +20,14 @@ target_link_libraries(add_trivial_quad_parameterization PRIVATE
   ApplicationUtilLib
 )
 
+add_executable(generate_components
+generate_components.cpp
+)
+target_link_libraries(generate_components PRIVATE
+  PennerLib
+  ApplicationUtilLib
+)
+
 # only build visualization executables if visualization enabled
 if (NOT USE_MULTIPRECISION)
 if (ENABLE_VISUALIZATION)

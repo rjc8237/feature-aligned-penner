@@ -10,6 +10,7 @@
 #include <CLI/CLI.hpp>
 #include <igl/bounding_box_diagonal.h>
 
+
 using namespace Penner;
 using namespace Penner::Optimization;
 using namespace Penner::Holonomy;
@@ -19,7 +20,6 @@ int main(int argc, char* argv[])
 {
     spdlog::set_level(spdlog::level::info);
 
-
     // Get command line arguments
     CLI::App app{"Generate a feature aligned parametrization."};
     std::string mesh = "";
@@ -27,9 +27,13 @@ int main(int argc, char* argv[])
     std::string output_dir = "./";
 
     // IO Parameters
-    app.add_option("--name", mesh, "Mesh name")->required();
+    bool use_existing_field = false;
+    bool show_parameterization = false;
+    app.add_option("--name", mesh, "Mesh name (without obj suffix, e.g., fandisk)")->required();
     app.add_option("-i,--input", input_dir, "Input directory")->check(CLI::ExistingDirectory)->required();
     app.add_option("-o,--output", output_dir, "Output directory");
+    app.add_flag("--use_existing_field", use_existing_field, "Use precomputed field at the input directory");
+    app.add_flag("--show_parameterization", show_parameterization, "Show aligned parameterization");
 
     // Marked Metric Parameters
     NewtonParameters alg_params;
@@ -51,7 +55,6 @@ int main(int argc, char* argv[])
     igl::readOBJ(mesh_filename, V, uv, N, F, FT, FN);
 
     // Get features and field
-    bool use_existing_field = true;
     std::vector<VertexEdge> feature_edges, hard_feature_edges;
     Eigen::MatrixXd reference_field;
     Eigen::VectorXd theta;
@@ -94,9 +97,10 @@ int main(int argc, char* argv[])
 
     // get optimized metric
     spdlog::info("projecting to feature constraints");
-    alg_params.output_dir = "./temp";
+    alg_params.output_dir = output_dir;
     alg_params.error_eps = 1e-10;
     alg_params.solver = "ldlt";
+    MarkedMetricParameters marked_metric_params;
     AlignedMetricGenerator aligned_metric_generator(
         V,
         F,
@@ -105,11 +109,18 @@ int main(int argc, char* argv[])
         reference_field,
         theta,
         kappa,
-        period_jump);
+        period_jump,
+        marked_metric_params);
     aligned_metric_generator.optimize_relaxed(alg_params);
     aligned_metric_generator.parameterize(false);
     auto [V_r, F_r, uv_r, FT_r, fn_to_f_r, endpoints_r] = aligned_metric_generator.get_parameterization();
-    view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", true);
+
+    if (show_parameterization) view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", true);
+
+    std::string output_filename = join_path(output_dir, mesh+"_opt.obj");
+    write_obj_with_uv(output_filename, V_r, F_r, uv_r, FT_r);
+
     //std::string output_filename = join_path(output_dir, "optimized_corner_coords");
     //write_matrix(opt_corner_coords, output_filename, " ");
+
 }

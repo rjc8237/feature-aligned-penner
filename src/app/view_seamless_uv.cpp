@@ -81,6 +81,7 @@ int main(int argc, char* argv[])
 
     //auto [cone_positions, cone_values] = generate_cone_vertices(V, cone_angles_vec);
     polyscope::registerSurfaceMesh("base mesh", V, F);
+    polyscope::registerSurfaceMesh2D("layout", uv, FT);
     //polyscope::getSurfaceMesh("base mesh")
     //    ->addVertexScalarQuantity("cone angles", cone_angles);
     //polyscope::registerPointCloud("cones", cone_positions);

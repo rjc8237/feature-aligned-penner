@@ -10,7 +10,7 @@ An implementation of [Feature-Aligned Parametrization in Penner Coordinates](htt
 
 ### Overview
 
-This method generates an approximately isometric seamless parameterization of an input `obj` mesh that is aligned to a provided feature set. TODO with parametric cone angle and holonomy signature constraints. Retriangulation is often necessary to satisfy these constraints, so the initial mesh is intrinsically refined to produce an output mesh with a compatible parameterization.
+This method generates an approximately isometric seamless parameterization of an input `obj` mesh that is aligned to a provided feature set. Retriangulation is often necessary to satisfy these constraints, so the initial mesh is intrinsically refined to produce an output mesh with a compatible parameterization.
 
 ## Installation
 
@@ -31,38 +31,12 @@ The core parameterization method is `bin/parametrize_aligned`. This executable t
 
 |flag | description| default|
 | --- | --- | --- |
-|`--mesh` | Mesh filepath| `none`|
-|`--cones` | Target cone filepath| `none`|
-|`--field` | Cross field rotation form filepath| `none`|
-|`--output` | Output directory| `./`|
-|`--remove_holonomy_constraints` | Only constrain cone angles (parametrization no longer seamless)| `false`|
-|`--max_itr` | Maximum number of iterations| `500`| 
-|`--error_eps` | Maximum allowed angle error| `1e-12`|
-|`--max_triangle_quality` | Regularize initial metric until quality measure below value (`0` for no regularization) | `0`|
-|`--use_delaunay` | Perform Newton in Delaunay connectivity | `true`|
-|`--fit_field` | Fit new cross field instead of using cones and field from file| `false`|
+|`--name` | name of the mesh (without `.obj` suffix) | `none`|
+|`--input` | input directory with mesh | `./`|
+|`--output` | output directory for parameterized mesh | `./`|
+|`--show_parameterization` | open viewer to see parameterization | `false`|
 
-The input mesh must be a manifold surface with a single connected component. The input cone and field files can be generated with `bin/generate_frame_field`, or they can generated algorithmically at runtime with the `--fit_field` flag. The output is a refined mesh with a parameterization and a file of metric coordinate values.
-
-## Figure Reproduction
-
-Scripts to generate the figures of the paper are included in `figures`.
-
-![Some example figures](media/examples.jpg)
-
-The models (with cone and field data) and cameras used in [Seamless Parametrization in Penner Coordinates](https://dl.acm.org/doi/10.1145/3658202) necessary for these scripts will be available soon;  `closed-myles`, `thingi10k-tetwild` and `cameras` must be copied to `data/closed-Myles`, `data/thingi10k-tetwild`, and `data/cameras` respectively.
-
-A Conda environment must be activated (before compiling the code) with
-```
-conda env create -f environment.yml
-conda activate curvature-metric
-```
-The figure bash scripts can then be run independently or in batch with
-```
-bash fig-all.sh
-```
-
-Note that most bash scripts generate an output directory with a JSON file specifying parameters for the parameterization and rendering pipeline python script `scripts/_pipeline.py`. Such JSON files can also be used for general batch parameterization and analysis.
+The input mesh must be at the input path `<input>/<name>.obj`, and it must be a manifold surface with a single connected component.
 
 ### Library
 
@@ -73,22 +47,21 @@ These coordinates underly the recent advances in parametrization with cone and h
 ## Citation
 
 ```
-@article{capouellez:2023:seamless,
-author = {Capouellez, Ryan and Zorin, Denis},
-title = {Seamless Parametrization in Penner Coordinates},
-year = {2024},
-issue_date = {July 2024},
+@article{capouellez:2024:feature,
+author = {Capouellez, Ryan and Singh, Rodrigo and Heistermann, Martin and Bommes, David and Zorin, Denis},
+title = {Feature-Aligned Parametrization in Penner Coordinates},
+year = {2025},
+issue_date = {August 2025},
 publisher = {Association for Computing Machinery},
 address = {New York, NY, USA},
-volume = {43},
+volume = {44},
 number = {4},
 issn = {0730-0301},
-url = {https://doi.org/10.1145/3658202},
-doi = {10.1145/3658202},
+url = {https://doi.org/10.1145/3731216},
+doi = {10.1145/3731216},
 journal = {ACM Trans. Graph.},
-month = {jul},
-articleno = {61},
-numpages = {13},
-keywords = {parametrization, seamless, discrete metrics, cone metrics, conformal, intrinsic triangulation, penner coordinates}
+month = jul,
+articleno = {110},
+numpages = {21},
 }
 ```
