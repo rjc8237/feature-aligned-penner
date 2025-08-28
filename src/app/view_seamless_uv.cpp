@@ -8,6 +8,7 @@
 #include "util/vf_mesh.h"
 
 #include <igl/readOBJ.h>
+#include <igl/remove_unreferenced.h>
 #include <CLI/CLI.hpp>
 #include "polyscope/surface_mesh.h"
 #include "polyscope/point_cloud.h"
@@ -66,22 +67,22 @@ int main(int argc, char* argv[])
     Eigen::MatrixXi F_is_seam = find_seams(F, FT);
     auto [V_seams, E_seams] = generate_edges(V, F, F_is_seam);
 
-    std::vector<double> old_feature_alignment = compute_feature_alignment(F, uv, FT, E);
-    spdlog::info("Maximum feature alignment: {}", vector_max(old_feature_alignment));
+    std::vector<double> feature_alignment = compute_feature_alignment(F, uv, FT, E);
+    spdlog::info("Maximum feature alignment: {}", vector_max(feature_alignment));
     view_seamless_parameterization(V, F, uv, FT, "seamless mesh", false);
     //VectorX cone_angles = compute_cone_angles(V, F, uv, FT);
     //std::vector<Scalar> cone_angles_vec;
     //convert_eigen_to_std_vector(cone_angles, cone_angles_vec);
 
-    auto [uv_n, FT_n] = generate_connected_parameterization<Scalar>(V, F, uv, FT);
-    view_seamless_parameterization(V, F, uv_n, FT_n, "connected seamless mesh", false);
+    //auto [uv_n, FT_n] = generate_connected_parameterization<Scalar>(V, F, uv, FT);
+    //view_seamless_parameterization(V, F, uv_n, FT_n, "connected seamless mesh", false);
 
-    std::vector<double> feature_alignment = compute_feature_alignment(F, uv_n, FT_n, E);
-    spdlog::info("Maximum feature alignment: {}", vector_max(feature_alignment));
+    //std::vector<double> feature_alignment = compute_feature_alignment(F, uv_n, FT_n, E);
+    //spdlog::info("Maximum feature alignment: {}", vector_max(feature_alignment));
 
     //auto [cone_positions, cone_values] = generate_cone_vertices(V, cone_angles_vec);
-    polyscope::registerSurfaceMesh("base mesh", V, F);
-    polyscope::registerSurfaceMesh2D("layout", uv, FT);
+    bool show_layout = false;
+    if (show_layout) polyscope::registerSurfaceMesh2D("layout", uv, FT);
     //polyscope::getSurfaceMesh("base mesh")
     //    ->addVertexScalarQuantity("cone angles", cone_angles);
     //polyscope::registerPointCloud("cones", cone_positions);
@@ -90,8 +91,13 @@ int main(int argc, char* argv[])
     //    ->setColorMap("coolwarm")
     //    ->setMapRange({-M_PI, M_PI})
     //    ->setEnabled(true);
+    Eigen::MatrixXd NV;
+    Eigen::MatrixXi NE;
+    Eigen::VectorXi I;
+    //igl::remove_unreferenced(V, E, NV, NV, I);
     polyscope::registerCurveNetwork("features", V, E);
-    polyscope::registerCurveNetwork("features", V_seams, E_seams);
+    bool show_seams = false;
+    if (show_seams) polyscope::registerCurveNetwork("seams", V_seams, E_seams);
 
     polyscope::show();
 

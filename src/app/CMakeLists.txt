@@ -4,6 +4,14 @@ target_link_libraries(ApplicationUtilLib INTERFACE
   CLI11::CLI11
 )
 
+add_executable(generate_field
+generate_field.cpp
+)
+target_link_libraries(generate_field PRIVATE
+  PennerLib
+  ApplicationUtilLib
+)
+
 add_executable(parameterize_aligned
 parameterize_aligned.cpp
 )

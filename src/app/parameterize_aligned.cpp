@@ -111,14 +111,18 @@ int main(int argc, char* argv[])
         kappa,
         period_jump,
         marked_metric_params);
+    aligned_metric_generator.optimize_full(alg_params);
     aligned_metric_generator.optimize_relaxed(alg_params);
     aligned_metric_generator.parameterize(false);
     auto [V_r, F_r, uv_r, FT_r, fn_to_f_r, endpoints_r] = aligned_metric_generator.get_parameterization();
+    auto [feature_face_edges, misaligned_edges] = aligned_metric_generator.get_refined_features();
+    auto feature_edges_r = compute_face_edge_endpoints(feature_face_edges, F_r);
 
     if (show_parameterization) view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", true);
 
     std::string output_filename = join_path(output_dir, mesh+"_opt.obj");
     write_obj_with_uv(output_filename, V_r, F_r, uv_r, FT_r);
+    write_mesh_edges(output_filename, feature_edges_r);
 
     //std::string output_filename = join_path(output_dir, "optimized_corner_coords");
     //write_matrix(opt_corner_coords, output_filename, " ");
