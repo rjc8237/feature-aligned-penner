@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
             
     if (collapse_cones)
     {
-        field_generator.collapse_adjacent_cones(marked_metric);
+        field_generator.collapse_nearby_cones(marked_metric);
         field_generator.get_field(marked_metric, vtx_reindex, F_cut, face_reindex, reference_corner, theta, kappa, period_jump);
     }
 
