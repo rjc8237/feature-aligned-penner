@@ -3,6 +3,7 @@ target_include_directories(ApplicationUtilLib INTERFACE .)
 target_link_libraries(ApplicationUtilLib INTERFACE
   CLI11::CLI11
 )
+message(STATUS "Executable directory: ${CMAKE_CURRENT_SOURCE_DIR}")  # sanity check
 
 add_executable(generate_field
 generate_field.cpp

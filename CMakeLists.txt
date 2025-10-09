@@ -22,7 +22,6 @@ if(PROJECT_IS_TOP_LEVEL)
 
   option(CHECK_VALIDITY "Check validity pre and post conditions" OFF)
   option(BUILD_CURVATURE_METRIC_TESTS "Build tests" ON)
-  option(USE_EMBREE "Use embree" ON)
   option(USE_WARNINGS "Compile with warnings" ON)
 
   # Set libigl options
