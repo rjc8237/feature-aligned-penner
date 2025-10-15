@@ -50,7 +50,8 @@ int main(int argc, char* argv[])
 
     // refine input mesh
     std::vector<VertexEdge> feature_edges, hard_feature_edges;
-    std::tie(V, F, feature_edges, hard_feature_edges) = generate_refined_feature_mesh(V, F, false);
+    std::vector<int> fn_to_f;
+    std::tie(V, F, feature_edges, hard_feature_edges, fn_to_f) = generate_refined_feature_mesh(V, F, false);
     FeatureFinder feature_finder(V, F);
     feature_finder.mark_features(feature_edges);
     Eigen::MatrixXd V_cut;
@@ -158,5 +159,7 @@ int main(int argc, char* argv[])
     write_feature_edges(output_filename, hard_feature_edges);
     output_filename = join_path(output_dir, mesh+".ffield");
     write_frame_field(output_filename, reference_field, theta, kappa, period_jump);
+    output_filename = join_path(output_dir, mesh+"_fn_to_f");
+    write_vector(fn_to_f, output_filename);
 
 }

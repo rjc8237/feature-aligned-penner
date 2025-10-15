@@ -60,6 +60,7 @@ int main(int argc, char* argv[])
     Eigen::VectorXd theta;
     Eigen::MatrixXd kappa;
     Eigen::MatrixXi period_jump;
+    std::vector<int> fn_to_f = arange(F.rows());
     if (use_existing_field)
     {
         spdlog::info("loading feature edges");
@@ -71,7 +72,7 @@ int main(int argc, char* argv[])
     }
     else {
         // refine input mesh
-        std::tie(V, F, feature_edges, hard_feature_edges) = generate_refined_feature_mesh(V, F, false);
+        std::tie(V, F, feature_edges, hard_feature_edges, fn_to_f) = generate_refined_feature_mesh(V, F, false);
         FeatureFinder feature_finder(V, F);
         feature_finder.mark_features(feature_edges);
         auto[V_cut, F_cut, V_map, F_is_feature] = feature_finder.generate_feature_cut_mesh();
@@ -127,7 +128,7 @@ int main(int argc, char* argv[])
     output_filename = join_path(output_dir, mesh+".ffield");
     write_frame_field(output_filename,  reference_field_r, theta_r, kappa_r, period_jump_r);
     output_filename = join_path(output_dir, mesh+"_fn_to_f");
-    write_vector(fn_to_f_r, output_filename);
+    write_vector(vector_compose(fn_to_f_r, fn_to_f), output_filename);
 
     //std::string output_filename = join_path(output_dir, "optimized_corner_coords");
     //write_matrix(opt_corner_coords, output_filename, " ");
