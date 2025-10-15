@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
     output_filename = join_path(output_dir, mesh+".ffield");
     write_frame_field(output_filename,  reference_field_r, theta_r, kappa_r, period_jump_r);
     output_filename = join_path(output_dir, mesh+"_fn_to_f");
-    write_vector(vector_compose(fn_to_f_r, fn_to_f), output_filename);
+    write_vector(vector_compose(fn_to_f, fn_to_f_r), output_filename);
 
     //std::string output_filename = join_path(output_dir, "optimized_corner_coords");
     //write_matrix(opt_corner_coords, output_filename, " ");
