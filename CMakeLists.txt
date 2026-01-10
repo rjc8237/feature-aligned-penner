@@ -11,7 +11,7 @@ if(PROJECT_IS_TOP_LEVEL)
   # Options for the project
   option(USE_PYBIND "Generate pybindings" ON)
   option(USE_MULTIPRECISION "Use high precision floating point" OFF)
-  option(USE_MULTIPRECISION_OVERLAY "Use high precision floating point for overlay" ON)
+  option(USE_MULTIPRECISION_OVERLAY "Use high precision floating point for overlay" OFF)
 
   option(USE_SUITESPARSE "Use suitesparse for QR factorization" ON)
   # TODO Need to disable most features for mpfr, including suitesparse
@@ -22,7 +22,9 @@ if(PROJECT_IS_TOP_LEVEL)
 
   option(CHECK_VALIDITY "Check validity pre and post conditions" OFF)
   option(BUILD_CURVATURE_METRIC_TESTS "Build tests" ON)
-  option(USE_WARNINGS "Compile with warnings" ON)
+
+  # Currently warnings result in errors
+  option(USE_WARNINGS "Compile with warnings as errors" OFF)
 
   # Set libigl options
   option(LIBIGL_PREDICATES "Use Predicates" ON)
@@ -34,6 +36,7 @@ endif()
 list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # add core Penner methods
+find_package(OpenMP REQUIRED)
 add_subdirectory(ext/penner-optimization)
 
 if(NOT ENABLE_VISUALIZATION)

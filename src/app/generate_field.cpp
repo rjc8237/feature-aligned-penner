@@ -98,7 +98,15 @@ int main(int argc, char* argv[])
             
     if (collapse_cones)
     {
+        // first, try to move cones away
+        field_generator.move_nearby_cones(marked_metric);
+
+        // then, fall back to collapse
         field_generator.collapse_nearby_cones(marked_metric);
+
+        // TODO: maybe try to move again 
+        //field_generator.move_nearby_cones(marked_metric);
+
         field_generator.get_field(marked_metric, vtx_reindex, F_cut, face_reindex, reference_corner, theta, kappa, period_jump);
     }
 
