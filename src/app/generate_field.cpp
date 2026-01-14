@@ -27,6 +27,7 @@ int main(int argc, char* argv[])
     std::string mesh_filename = "./";
     std::string output_dir = "./";
     Scalar displacement = 0.;
+    Scalar dihedral_angle = 60.;
     bool show_field = false;
     bool collapse_cones = false;
 
@@ -34,6 +35,7 @@ int main(int argc, char* argv[])
     app.add_option("--mesh", mesh_filename, "Input mesh")->check(CLI::ExistingFile)->required();
     app.add_option("--output", output_dir, "Output directory");
     app.add_option("--displacement", displacement, "displacement for cross field viewer");
+    app.add_option("--dihedral_angle", dihedral_angle, "target dihedral angle for features");
     app.add_flag("--view", show_field, "open viewer to show field");
     app.add_flag("--collapse_cones", collapse_cones, "collapse adjacent cones");
     CLI11_PARSE(app, argc, argv);
@@ -51,7 +53,7 @@ int main(int argc, char* argv[])
     // refine input mesh
     std::vector<VertexEdge> feature_edges, hard_feature_edges;
     std::vector<int> fn_to_f;
-    std::tie(V, F, feature_edges, hard_feature_edges, fn_to_f) = generate_refined_feature_mesh(V, F, false);
+    std::tie(V, F, feature_edges, hard_feature_edges, fn_to_f) = generate_refined_feature_mesh(V, F, false, dihedral_angle);
     FeatureFinder feature_finder(V, F);
     feature_finder.mark_features(feature_edges);
     Eigen::MatrixXd V_cut;
@@ -104,8 +106,8 @@ int main(int argc, char* argv[])
         // then, fall back to collapse
         field_generator.collapse_nearby_cones(marked_metric);
 
-        // TODO: maybe try to move again 
-        //field_generator.move_nearby_cones(marked_metric);
+        // try to move again 
+        field_generator.move_nearby_cones(marked_metric);
 
         field_generator.get_field(marked_metric, vtx_reindex, F_cut, face_reindex, reference_corner, theta, kappa, period_jump);
     }
@@ -115,8 +117,14 @@ int main(int argc, char* argv[])
         polyscope::init();
         field_generator.update_viewer(marked_metric, vtx_reindex, V_disp);
         auto callback = [&] () {
+            if (ImGui::Button("move cones")) {
+                field_generator.move_nearby_cones(marked_metric);
+                //field_generator.collapse_adjacent_cones(marked_metric);
+                field_generator.update_viewer(marked_metric, vtx_reindex, V_disp);
+            }
             if (ImGui::Button("collapse cones")) {
-                field_generator.collapse_adjacent_cones(marked_metric);
+                field_generator.collapse_nearby_cones(marked_metric);
+                //field_generator.collapse_adjacent_cones(marked_metric);
                 field_generator.update_viewer(marked_metric, vtx_reindex, V_disp);
             }
             if (ImGui::Button("parameterize")) {
