@@ -11,6 +11,7 @@ generate_field.cpp
 target_link_libraries(generate_field PRIVATE
   PennerLib
   ApplicationUtilLib
+
 )
 
 add_executable(parameterize_aligned
@@ -18,6 +19,7 @@ parameterize_aligned.cpp
 )
 target_link_libraries(parameterize_aligned PRIVATE
   PennerLib
+  SymmetricDirichletLib
   ApplicationUtilLib
 )
 
