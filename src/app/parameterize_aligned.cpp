@@ -95,9 +95,11 @@ Eigen::MatrixXd optimize_aligned_parameterization(
     const Eigen::MatrixXd& PD2,
     const Eigen::MatrixXi& FE_init,
     const Eigen::MatrixXi& ME,
-    const nlohmann::json& config
+    const nlohmann::json& config,
+    bool fix_boundary
 ) {
     SymDir::Parameters param = read_parameters(config);
+    param.fix_boundary = fix_boundary;
 
     igl::Timer timer;
     double time = 0;
@@ -159,8 +161,10 @@ int main(int argc, char* argv[])
     std::filesystem::path current_dir = std::filesystem::path(__FILE__).parent_path();
     std::filesystem::path input_json = current_dir / "symdir.json";
     bool use_uniform_bc = false;
+    bool optimize = false;
+    bool use_free_cones = false;
 
-    int full_itr = 50;
+    int full_itr = 100;
     NewtonParameters alg_params;
     int max_itr = alg_params.max_itr;
     spdlog::level::level_enum log_level = spdlog::level::info;
@@ -173,6 +177,8 @@ int main(int argc, char* argv[])
     app.add_option("-o,--output", output_dir, "Output directory");
     app.add_flag("--use_existing_field", use_existing_field, "Use precomputed field at the input directory");
     app.add_flag("--use_uniform_bc", use_uniform_bc, "Use uniform barycentric coordinates");
+    app.add_flag("--use_free_cones", use_free_cones, "Use free cones and remove holonomy constraints");
+    app.add_flag("--optimize", optimize, "Optimize uv coordinates");
     app.add_flag("--show_parameterization", show_parameterization, "Show aligned parameterization");
     app.add_option("--full_itr", full_itr, "Initial iterations of full (potentially unsatisfiable) constraints");
     app.add_option("--log_level", log_level, "Level of logging")
@@ -246,6 +252,12 @@ int main(int argc, char* argv[])
     alg_params.error_eps = 1e-10;
     alg_params.solver = "ldlt";
     MarkedMetricParameters marked_metric_params;
+    if (use_free_cones)
+    {
+        marked_metric_params.use_free_cones = true;
+        marked_metric_params.max_boundary_constraints = 0;
+        marked_metric_params.max_loop_constraints = 0;
+    }
     AlignedMetricGenerator aligned_metric_generator(
         V,
         F,
@@ -261,9 +273,13 @@ int main(int argc, char* argv[])
     alg_params.max_itr = full_itr;
     aligned_metric_generator.optimize_full(alg_params);
 
-    // run iterations of relaxed optimization
-    alg_params.max_itr = max_itr;
-    aligned_metric_generator.optimize_relaxed(alg_params);
+    // only works for feature alignment
+    if (!use_free_cones)
+    {
+        // run iterations of relaxed optimization
+        alg_params.max_itr = max_itr;
+        aligned_metric_generator.optimize_relaxed(alg_params);
+    }
 
     aligned_metric_generator.parameterize(false, use_uniform_bc);
     auto [V_r, F_r, uv_r, FT_r, fn_to_f_r, endpoints_r] = aligned_metric_generator.get_parameterization();
@@ -271,8 +287,13 @@ int main(int argc, char* argv[])
     auto feature_edges_r = compute_face_edge_endpoints(feature_face_edges, F_r);
     auto [reference_field_r, theta_r, kappa_r, period_jump_r] = aligned_metric_generator.get_refined_field();
 
+    // for free cones, mark all feature edges
+    if (use_free_cones)
+    {
+        feature_edges_r = feature_edges;
+    }
+
     // Optionally optimize parameterization 
-    bool optimize = true;
     if (optimize)
     {
         // TODO: this is broken for multiple components
@@ -299,6 +320,7 @@ int main(int argc, char* argv[])
 
         // TODO: build ME
         Eigen::MatrixXi ME(0,0);
+        bool fix_boundary = use_free_cones; // fix boundary if using free cones
         uv_r = optimize_aligned_parameterization(
             V_r,
             F_r,
@@ -308,7 +330,8 @@ int main(int argc, char* argv[])
             PD2,
             FE,
             ME,
-            config);
+            config,
+            fix_boundary);
     }
 
     if (show_parameterization) view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", true);
