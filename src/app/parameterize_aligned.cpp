@@ -6,10 +6,13 @@
 #include "util.h"
 #include "holonomy/core/viewer.h"
 #include "feature/surgery/cut_metric_generator.h"
+#include "util/vf_mesh.h"
 
 #include <CLI/CLI.hpp>
 #include <igl/bounding_box_diagonal.h>
+#include <igl/internal_angles.h>
 
+#include "polyscope/surface_mesh.h"
 
 using namespace Penner;
 using namespace Penner::Optimization;
@@ -85,6 +88,156 @@ SymDir::Parameters read_parameters(const nlohmann::json& config)
 
     return param;
 }   
+
+std::vector<bool> tag_cone_vertices(
+    const Eigen::MatrixXd& V,
+    const Eigen::MatrixXi& F,
+    const Eigen::MatrixXd& uv,
+    const Eigen::MatrixXi& FT,
+    const std::vector<FaceEdge>& feature_face_edges
+) {
+    // get mask of feature corners
+    int num_faces = FT.rows();
+    int num_vertices = V.rows();
+    Eigen::MatrixXi is_feature = compute_mask_from_face_edges(num_faces, feature_face_edges);
+
+    // get triangle adjacency for mesh
+    Eigen::MatrixXi TT, TTi;
+	igl::triangle_triangle_adjacency(F, TT, TTi);
+			assert(F(f, j) == F(f_opp, TTi(f, i)));
+			assert(F(f, i) == F(f_opp, (TTi(f, i) + 1) % 3));
+
+    // get unioned vertices, split by features
+    int num_halfedges = 3 * num_faces;
+    UnionFind cut_vertices(num_halfedges);
+    //Eigen::MatrixXi is_boundary = Eigen::MatrixXi::Zero(num_faces, 3);
+    Eigen::VectorXi is_boundary = Eigen::VectorXi::Zero(num_vertices);
+    for (int f = 0; f < num_faces; ++f) {
+        for (int i = 0 ; i < 3; ++i)
+        {
+            int l = (i + 2) % 3;
+
+            // mark feature edges
+            if (is_feature(f, l))
+            {
+                //is_boundary(f, i) = 1;
+                is_boundary(F(f, i)) = 1;
+            }
+            // union tips across edge otherwise
+            else
+            {
+                // halfedge with F(f, i) at tip
+                int hki = 3 * f + i;
+
+                // get halfedge rotated clockwise, using libigls halfedge base indexing
+                int f_opp = TT(f, i);
+                int j = TTi(f, i); // index for halfedge opposite hij
+                int k = (j + 1) % 3; // index for halfedge in f pointing to vi
+                int hji = 3 * f_opp + k;
+                cut_vertices.union_sets(hki, hji);
+            }
+        }
+    }
+
+    // compute cone angles of unioned vertices
+    int num_cut_vertices = cut_vertices.count_sets();
+    std::vector<int> set_index = cut_vertices.index_sets();
+    Eigen::MatrixXd corner_angles;
+    igl::internal_angles(uv, FT, corner_angles);
+    VectorX cone_angles = VectorX::Zero(num_cut_vertices);
+    for (int fijk = 0; fijk < num_faces; ++fijk)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            int vi = set_index[3 * fijk + i];
+            cone_angles[vi] += corner_angles(fijk, i);
+        }
+    }
+
+    Eigen::MatrixXi vertex_indices(num_faces, 3);
+    Eigen::MatrixXd halfedge_tip_angles = Eigen::MatrixXd::Zero(num_faces, 3);
+    Eigen::MatrixXi is_cone = Eigen::MatrixXi::Zero(num_faces, 3);
+    for (int f = 0; f < num_faces; ++f) {
+        for (int i = 0 ; i < 3; ++i)
+        {
+            int h = 3 * f + i;
+            int v = set_index[h];
+            vertex_indices(f, i) = v;
+            halfedge_tip_angles(f, i) += cone_angles[v];
+        }
+    }
+
+    int num_uv_vertices = uv.rows();
+    std::vector<bool> is_uv_cone(num_uv_vertices, false);
+    Eigen::VectorXi is_uv_cone_mask = Eigen::VectorXi::Zero(num_uv_vertices);
+    for (int f = 0; f < num_faces; ++f) {
+        for (int i = 0 ; i < 3; ++i)
+        {
+            int v = F(f, i);
+            int vt = FT(f, i);
+            if ((!is_boundary[v]) && (!float_equal(halfedge_tip_angles(f, i), 2 * PI)))
+            {
+                is_cone(f, i) = 1;
+                is_uv_cone[vt] = true;
+                is_uv_cone_mask[vt] = 1;
+            }
+            else if ((is_boundary[v]) && (!float_equal(halfedge_tip_angles(f, i), PI)))
+            {
+                is_cone(f, i) = 1;
+                is_uv_cone[vt] = true;
+                is_uv_cone_mask[vt] = 1;
+            }
+        }
+    }
+
+    bool show_uv_cones = true;
+    if (show_uv_cones)
+    {
+        polyscope::init();
+
+        // closed mesh
+        std::string mesh_handle = "mesh";
+        polyscope::registerSurfaceMesh(mesh_handle, V, F);
+        polyscope::getSurfaceMesh(mesh_handle)
+            ->addHalfedgeScalarQuantity(
+                "vertex indices",
+                vertex_indices.transpose().reshaped())
+            ->setEnabled(true);
+        polyscope::getSurfaceMesh(mesh_handle)
+            ->addHalfedgeScalarQuantity(
+                "3D vertex indices",
+                F.transpose().reshaped());
+        polyscope::getSurfaceMesh(mesh_handle)
+            ->addHalfedgeScalarQuantity(
+                "cone angles",
+                halfedge_tip_angles.transpose().reshaped());
+        polyscope::getSurfaceMesh(mesh_handle)
+            ->addVertexScalarQuantity(
+                "is boundary",
+                is_boundary.transpose().reshaped())
+            ->setColorMap("coolwarm");
+        polyscope::getSurfaceMesh(mesh_handle)
+            ->addHalfedgeScalarQuantity(
+                "is cone",
+                is_cone.transpose().reshaped())
+            ->setColorMap("coolwarm");
+
+        // cut mesh along seams
+        Eigen::MatrixXd V_cut;
+        cut_mesh_along_parametrization_seams(V, F, uv, FT, V_cut);
+        mesh_handle = "cut mesh";
+        polyscope::registerSurfaceMesh(mesh_handle, V_cut, FT);
+        polyscope::getSurfaceMesh(mesh_handle)
+            ->addVertexScalarQuantity(
+                "is uv cone",
+                is_uv_cone_mask.transpose().reshaped())
+            ->setEnabled(true);
+
+        polyscope::show();
+    }
+
+    return is_uv_cone;
+}
 
 Eigen::MatrixXd optimize_aligned_parameterization(
     const Eigen::MatrixXd& V_init,
@@ -171,6 +324,7 @@ int main(int argc, char* argv[])
 
     // IO Parameters
     bool use_existing_field = false;
+    bool show_field = false;
     bool show_parameterization = false;
     app.add_option("--name", mesh, "Mesh name (without obj suffix, e.g., fandisk)")->required();
     app.add_option("-i,--input", input_dir, "Input directory")->check(CLI::ExistingDirectory)->required();
@@ -179,6 +333,7 @@ int main(int argc, char* argv[])
     app.add_flag("--use_uniform_bc", use_uniform_bc, "Use uniform barycentric coordinates");
     app.add_flag("--use_free_cones", use_free_cones, "Use free cones and remove holonomy constraints");
     app.add_flag("--optimize", optimize, "Optimize uv coordinates");
+    app.add_flag("--show_field", show_field, "Show field constraints");
     app.add_flag("--show_parameterization", show_parameterization, "Show aligned parameterization");
     app.add_option("--full_itr", full_itr, "Initial iterations of full (potentially unsatisfiable) constraints");
     app.add_option("--log_level", log_level, "Level of logging")
@@ -245,6 +400,7 @@ int main(int argc, char* argv[])
         cut_metric_generator.generate_fields(V_cut, F_cut, V_map, direction, is_fixed_direction);
         std::tie(reference_field, theta, kappa, period_jump) = cut_metric_generator.get_field();
     }
+    if (show_field) view_cross_field(V, F, reference_field, theta, kappa, period_jump);
 
     // get optimized metric
     spdlog::info("projecting to feature constraints");
@@ -254,6 +410,7 @@ int main(int argc, char* argv[])
     MarkedMetricParameters marked_metric_params;
     if (use_free_cones)
     {
+        // TODO migrate some of this code to AlignedMetricGenerator
         marked_metric_params.use_free_cones = true;
         marked_metric_params.max_boundary_constraints = 0;
         marked_metric_params.max_loop_constraints = 0;
@@ -279,6 +436,10 @@ int main(int argc, char* argv[])
         // run iterations of relaxed optimization
         alg_params.max_itr = max_itr;
         aligned_metric_generator.optimize_relaxed(alg_params);
+    }
+    else
+    {
+        aligned_metric_generator.is_axis_aligned = false;
     }
 
     aligned_metric_generator.parameterize(false, use_uniform_bc);
@@ -343,6 +504,13 @@ int main(int argc, char* argv[])
     write_frame_field(output_filename,  reference_field_r, theta_r, kappa_r, period_jump_r);
     output_filename = join_path(output_dir, mesh+"_fn_to_f");
     write_vector(fn_to_f_r, output_filename);
+
+    // get uv cone vertices
+    std::vector<bool> is_cone_uv = tag_cone_vertices(V_r, F_r, uv_r, FT_r, feature_face_edges);
+    std::vector<int> uv_cone_vertices;
+    convert_boolean_array_to_index_vector(is_cone_uv, uv_cone_vertices);
+    output_filename = join_path(output_dir, mesh+"_uv_cone_vertices");
+    write_vector(uv_cone_vertices, output_filename);
 
     //std::string output_filename = join_path(output_dir, "optimized_corner_coords");
     //write_matrix(opt_corner_coords, output_filename, " ");

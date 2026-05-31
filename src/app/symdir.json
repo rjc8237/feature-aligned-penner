@@ -36,7 +36,7 @@
     "grad_rel_err": 1e-4,
     "cg_rel_err": 1e-2,
     "cg_iters": 10000,
-    "diff_err": 1e-2,
+    "diff_err": 1e-4,
     "soft_max": false,
     "t": 5.0,
     "use_worst_n_energy_in_ls": false,
