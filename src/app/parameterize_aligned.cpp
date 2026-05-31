@@ -89,7 +89,7 @@ SymDir::Parameters read_parameters(const nlohmann::json& config)
     return param;
 }   
 
-std::vector<bool> tag_cone_vertices(
+Eigen::MatrixXi tag_cone_corners(
     const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
     const Eigen::MatrixXd& uv,
@@ -190,7 +190,7 @@ std::vector<bool> tag_cone_vertices(
         }
     }
 
-    bool show_uv_cones = true;
+    bool show_uv_cones = false;
     if (show_uv_cones)
     {
         polyscope::init();
@@ -236,7 +236,7 @@ std::vector<bool> tag_cone_vertices(
         polyscope::show();
     }
 
-    return is_uv_cone;
+    return is_cone;
 }
 
 Eigen::MatrixXd optimize_aligned_parameterization(
@@ -506,11 +506,11 @@ int main(int argc, char* argv[])
     write_vector(fn_to_f_r, output_filename);
 
     // get uv cone vertices
-    std::vector<bool> is_cone_uv = tag_cone_vertices(V_r, F_r, uv_r, FT_r, feature_face_edges);
-    std::vector<int> uv_cone_vertices;
-    convert_boolean_array_to_index_vector(is_cone_uv, uv_cone_vertices);
-    output_filename = join_path(output_dir, mesh+"_uv_cone_vertices");
-    write_vector(uv_cone_vertices, output_filename);
+    Eigen::MatrixXi is_cone_corner = tag_cone_corners(V_r, F_r, uv_r, FT_r, feature_face_edges);
+    //std::vector<int> uv_cone_vertices;
+    //convert_boolean_array_to_index_vector(is_cone_uv, uv_cone_vertices);
+    output_filename = join_path(output_dir, mesh+"_uv_cone_corners");
+    write_integer_matrix(is_cone_corner, output_filename, " ");
 
     //std::string output_filename = join_path(output_dir, "optimized_corner_coords");
     //write_matrix(opt_corner_coords, output_filename, " ");
