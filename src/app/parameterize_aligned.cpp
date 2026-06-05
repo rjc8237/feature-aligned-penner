@@ -9,6 +9,7 @@
 #include "util/vf_mesh.h"
 
 #include <CLI/CLI.hpp>
+#include <igl/triangle_triangle_adjacency.h>
 #include <igl/bounding_box_diagonal.h>
 #include <igl/internal_angles.h>
 
@@ -19,10 +20,10 @@ using namespace Penner::Optimization;
 using namespace Penner::Holonomy;
 using namespace Penner::Feature;
 
+#if USE_UV_OPTIMIZATION 
 #include "ExtremeOpt.h"
 #include "MeshCutter.h"
 #include "main_helper.h"
-
 
 SymDir::Parameters read_parameters(const nlohmann::json& config)
 {
@@ -88,6 +89,71 @@ SymDir::Parameters read_parameters(const nlohmann::json& config)
 
     return param;
 }   
+
+Eigen::MatrixXd optimize_aligned_parameterization(
+    const Eigen::MatrixXd& V_init,
+    const Eigen::MatrixXi& F_init,
+    const Eigen::MatrixXd& uv,
+    const Eigen::MatrixXi& F,
+    const Eigen::MatrixXd& reference_field,
+    const Eigen::VectorXd& thetas,
+    const Eigen::MatrixXi& period_jumps,
+    const Eigen::MatrixXi& FE_init,
+    const Eigen::MatrixXi& ME,
+    const nlohmann::json& config,
+    bool fix_boundary
+) {
+    SymDir::Parameters param = read_parameters(config);
+    param.fix_boundary = fix_boundary;
+
+    igl::Timer timer;
+    double time = 0;
+    timer.start();
+	MeshCutter meshcutter(V_init, uv, F_init, F);
+	auto [V, EE] = meshcutter.cut_mesh();
+    Eigen::MatrixXi FE(0, 0);
+    time = timer.getElapsedTime();
+    if (param.do_feature_alignment)
+    {
+        // Loading the feature edge constraints
+        FE = meshcutter.reindex_feature_edges(FE_init);
+    }
+    double cons_residual = check_constraints(EE, FE, uv, F);
+    spdlog::info("Initial constraints error {}", cons_residual);
+
+    Eigen::MatrixXi new_F;
+    Eigen::MatrixXd new_V, new_uv;
+    SymDir::ExtremeOpt extremeopt(V, F);
+    extremeopt.m_params = param;
+    
+    extremeopt.create_mesh(V, F, uv);
+    extremeopt.set_v_map(F_init, F);
+
+    if (extremeopt.m_params.with_cons)
+    {
+        std::vector<std::vector<int>> EE_e = transform_EE(F, EE);
+        std::vector<std::vector<int>> FE_e;
+        if (extremeopt.m_params.do_feature_alignment) {
+            FE_e = transform_FE(F, FE);
+        }
+        extremeopt.init_constraints(EE_e);
+        extremeopt.EE = EE;
+        extremeopt.FE = FE;
+        extremeopt.ME = ME;
+    }
+
+    //extremeopt.view();
+    extremeopt.comb_matchings(reference_field, thetas, period_jumps);
+
+    Eigen::MatrixXi F_opt = F;
+    Eigen::MatrixXd uv_opt;
+    extremeopt.do_optimization_without_log();
+    extremeopt.export_mesh(V, F_opt, uv_opt);
+
+    return uv_opt;
+}
+
+#endif
 
 Eigen::MatrixXi tag_cone_corners(
     const Eigen::MatrixXd& V,
@@ -237,68 +303,6 @@ Eigen::MatrixXi tag_cone_corners(
     return is_cone;
 }
 
-Eigen::MatrixXd optimize_aligned_parameterization(
-    const Eigen::MatrixXd& V_init,
-    const Eigen::MatrixXi& F_init,
-    const Eigen::MatrixXd& uv,
-    const Eigen::MatrixXi& F,
-    const Eigen::MatrixXd& reference_field,
-    const Eigen::VectorXd& thetas,
-    const Eigen::MatrixXi& period_jumps,
-    const Eigen::MatrixXi& FE_init,
-    const Eigen::MatrixXi& ME,
-    const nlohmann::json& config,
-    bool fix_boundary
-) {
-    SymDir::Parameters param = read_parameters(config);
-    param.fix_boundary = fix_boundary;
-
-    igl::Timer timer;
-    double time = 0;
-    timer.start();
-	MeshCutter meshcutter(V_init, uv, F_init, F);
-	auto [V, EE] = meshcutter.cut_mesh();
-    Eigen::MatrixXi FE(0, 0);
-    time = timer.getElapsedTime();
-    if (param.do_feature_alignment)
-    {
-        // Loading the feature edge constraints
-        FE = meshcutter.reindex_feature_edges(FE_init);
-    }
-    double cons_residual = check_constraints(EE, FE, uv, F);
-    spdlog::info("Initial constraints error {}", cons_residual);
-
-    Eigen::MatrixXi new_F;
-    Eigen::MatrixXd new_V, new_uv;
-    SymDir::ExtremeOpt extremeopt(V, F);
-    extremeopt.m_params = param;
-    
-    extremeopt.create_mesh(V, F, uv);
-    extremeopt.set_v_map(F_init, F);
-
-    if (extremeopt.m_params.with_cons)
-    {
-        std::vector<std::vector<int>> EE_e = transform_EE(F, EE);
-        std::vector<std::vector<int>> FE_e;
-        if (extremeopt.m_params.do_feature_alignment) {
-            FE_e = transform_FE(F, FE);
-        }
-        extremeopt.init_constraints(EE_e);
-        extremeopt.EE = EE;
-        extremeopt.FE = FE;
-        extremeopt.ME = ME;
-    }
-
-    //extremeopt.view();
-    extremeopt.comb_matchings(reference_field, thetas, period_jumps);
-
-    Eigen::MatrixXi F_opt = F;
-    Eigen::MatrixXd uv_opt;
-    extremeopt.do_optimization_without_log();
-    extremeopt.export_mesh(V, F_opt, uv_opt);
-
-    return uv_opt;
-}
 
 int main(int argc, char* argv[])
 {
@@ -455,6 +459,7 @@ int main(int argc, char* argv[])
     }
 
     // Optionally optimize parameterization 
+#if USE_UV_OPTIMIZATION
     if (optimize)
     {
         std::ifstream js_in(input_json);
@@ -493,6 +498,7 @@ int main(int argc, char* argv[])
             config,
             fix_boundary);
     }
+#endif
 
     if (show_parameterization) view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", true);
 
