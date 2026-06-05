@@ -5,7 +5,7 @@
 #include "feature/surgery/cut_metric_generator.h"
 #include "feature/core/io.h"
 #include "util/io.h"
-#include "holonomy/field/frame_field.h"
+#include "field/frame_field.h"
 #include "holonomy/core/viewer.h"
 #include <igl/bounding_box_diagonal.h>
 #include <igl/writeOBJ.h>

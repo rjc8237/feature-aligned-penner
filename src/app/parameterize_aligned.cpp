@@ -1,7 +1,7 @@
 #include <igl/readOBJ.h>
 #include "feature/interface.h"
 #include "feature/core/io.h"
-#include "holonomy/field/frame_field.h"
+#include "field/frame_field.h"
 #include "util/io.h"
 #include "util.h"
 #include "holonomy/core/viewer.h"
@@ -104,8 +104,6 @@ Eigen::MatrixXi tag_cone_corners(
     // get triangle adjacency for mesh
     Eigen::MatrixXi TT, TTi;
 	igl::triangle_triangle_adjacency(F, TT, TTi);
-			assert(F(f, j) == F(f_opp, TTi(f, i)));
-			assert(F(f, i) == F(f_opp, (TTi(f, i) + 1) % 3));
 
     // get unioned vertices, split by features
     int num_halfedges = 3 * num_faces;
@@ -244,8 +242,9 @@ Eigen::MatrixXd optimize_aligned_parameterization(
     const Eigen::MatrixXi& F_init,
     const Eigen::MatrixXd& uv,
     const Eigen::MatrixXi& F,
-    const Eigen::MatrixXd& PD1,
-    const Eigen::MatrixXd& PD2,
+    const Eigen::MatrixXd& reference_field,
+    const Eigen::VectorXd& thetas,
+    const Eigen::MatrixXi& period_jumps,
     const Eigen::MatrixXi& FE_init,
     const Eigen::MatrixXi& ME,
     const nlohmann::json& config,
@@ -291,8 +290,7 @@ Eigen::MatrixXd optimize_aligned_parameterization(
     }
 
     //extremeopt.view();
-    extremeopt.PD1 = PD1;
-    extremeopt.PD2 = PD2;
+    extremeopt.comb_matchings(reference_field, thetas, period_jumps);
 
     Eigen::MatrixXi F_opt = F;
     Eigen::MatrixXd uv_opt;
@@ -407,6 +405,7 @@ int main(int argc, char* argv[])
     alg_params.output_dir = output_dir;
     alg_params.error_eps = 1e-10;
     alg_params.solver = "ldlt";
+    alg_params.do_reduction = true;
     MarkedMetricParameters marked_metric_params;
     if (use_free_cones)
     {
@@ -446,6 +445,7 @@ int main(int argc, char* argv[])
     auto [V_r, F_r, uv_r, FT_r, fn_to_f_r, endpoints_r] = aligned_metric_generator.get_parameterization();
     auto [feature_face_edges, misaligned_edges] = aligned_metric_generator.get_refined_features();
     auto feature_edges_r = compute_face_edge_endpoints(feature_face_edges, F_r);
+    auto misaligned_edges_r = compute_face_edge_endpoints(misaligned_edges, F_r);
     auto [reference_field_r, theta_r, kappa_r, period_jump_r] = aligned_metric_generator.get_refined_field();
 
     // for free cones, mark all feature edges
@@ -457,20 +457,11 @@ int main(int argc, char* argv[])
     // Optionally optimize parameterization 
     if (optimize)
     {
-        // TODO: this is broken for multiple components
-        auto [PD1, PD2] = comb_frame_field(
-            V_r,
-            F_r,
-            uv_r,
-            FT_r,
-            reference_field_r,
-            theta_r,
-            period_jump_r
-        );
-
         std::ifstream js_in(input_json);
         nlohmann::json config = nlohmann::json::parse(js_in);
         config["model"] = mesh;
+
+        // get feature edges
         int num_features = feature_edges_r.size();
         Eigen::MatrixXi FE(num_features, 2);
         for (int eij = 0; eij < num_features; ++eij)
@@ -479,16 +470,24 @@ int main(int argc, char* argv[])
             FE(eij, 1) = feature_edges_r[eij][1];
         }
 
-        // TODO: build ME
-        Eigen::MatrixXi ME(0,0);
+        // get misaliged edges
+        int num_misaligned = misaligned_edges_r.size();
+        Eigen::MatrixXi ME(num_misaligned, 2);
+        for (int eij = 0; eij < num_misaligned; ++eij)
+        {
+            ME(eij, 0) = misaligned_edges_r[eij][0];
+            ME(eij, 1) = misaligned_edges_r[eij][1];
+        }
+
         bool fix_boundary = use_free_cones; // fix boundary if using free cones
         uv_r = optimize_aligned_parameterization(
             V_r,
             F_r,
             uv_r,
             FT_r,
-            PD1,
-            PD2,
+            reference_field_r,
+            theta_r,
+            period_jump_r,
             FE,
             ME,
             config,
