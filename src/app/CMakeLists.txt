@@ -19,9 +19,13 @@ parameterize_aligned.cpp
 )
 target_link_libraries(parameterize_aligned PRIVATE
   PennerLib
-  SymmetricDirichletLib
   ApplicationUtilLib
 )
+if (USE_UV_OPTIMIZATION)
+  target_link_libraries(parameterize_aligned PRIVATE
+    SymmetricDirichletLib
+  )
+endif()
 
 add_executable(add_trivial_quad_parameterization
 add_trivial_quad_parameterization.cpp

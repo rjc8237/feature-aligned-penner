@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
     Scalar rel_anisotropy=0.9;
     Scalar abs_anisotropy=0.2;
     Scalar bb_diag = igl::bounding_box_diagonal(V);
-    auto [direction, is_fixed_direction] = compute_field_direction(
+    auto [direction, is_fixed_direction] = Penner::Field::compute_field_direction(
         V_cut,
         F_cut,
         radius,
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
     std::tie(marked_metric, vtx_reindex, face_reindex, rotation_form, Th_hat) = cut_metric_generator.get_union_metric( marked_metric_params);
 
     // modify field
-    IntrinsicNRosyField field_generator;
+    Penner::Field::IntrinsicNRosyField field_generator;
     field_generator.initialize(marked_metric);
     field_generator.set_field(marked_metric, vtx_reindex, F_cut, face_reindex, theta, kappa, period_jump);
     Eigen::MatrixXd V_disp = displace_cut_faces(V_cut, F_cut, displacement);
@@ -135,12 +135,12 @@ int main(int argc, char* argv[])
                 view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", false);
 
                 std::string output_filename = join_path(output_dir, mesh+"_param.obj");
-                Optimization::write_obj_with_uv(output_filename, V_r, F_r, uv_r, FT_r);
+                write_obj_with_uv(output_filename, V_r, F_r, uv_r, FT_r);
             }
             if (ImGui::Button("write field")) {
                 field_generator.get_field(marked_metric, vtx_reindex, F_cut, face_reindex, reference_corner, theta, kappa, period_jump);
                 std::string field_filename = join_path(output_dir, mesh+".ffield");
-                write_frame_field(field_filename, reference_field, theta, kappa, period_jump);
+                Penner::Field::write_frame_field(field_filename, reference_field, theta, kappa, period_jump);
             }
         };
         polyscope::state::userCallback = callback;
@@ -157,6 +157,6 @@ int main(int argc, char* argv[])
     output_filename = join_path(output_dir, mesh + "_hard_features");
     write_feature_edges(output_filename, hard_feature_edges);
     output_filename = join_path(output_dir, mesh+".ffield");
-    write_frame_field(output_filename, reference_field, theta, kappa, period_jump);
+    Penner::Field::write_frame_field(output_filename, reference_field, theta, kappa, period_jump);
 
 }
