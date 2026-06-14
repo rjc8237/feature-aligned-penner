@@ -375,7 +375,7 @@ int main(int argc, char* argv[])
         hard_feature_edges = load_feature_edges(hard_feature_filename);
 
         spdlog::info("loading constraints");
-        std::tie(reference_field, theta, kappa, period_jump) = load_frame_field(field_filename);
+        std::tie(reference_field, theta, kappa, period_jump) = Penner::Field::load_frame_field(field_filename);
     }
     else {
         // refine input mesh
@@ -388,7 +388,7 @@ int main(int argc, char* argv[])
         Scalar rel_anisotropy=0.9;
         Scalar abs_anisotropy=0.2;
         Scalar bb_diag = igl::bounding_box_diagonal(V);
-        auto [direction, is_fixed_direction] = compute_field_direction(
+        auto [direction, is_fixed_direction] = Penner::Field::compute_field_direction(
             V_cut,
             F_cut,
             radius,
@@ -506,7 +506,7 @@ int main(int argc, char* argv[])
     write_obj_with_uv(output_filename, V_r, F_r, uv_r, FT_r);
     write_mesh_edges(output_filename, feature_edges_r);
     output_filename = join_path(output_dir, mesh+".ffield");
-    write_frame_field(output_filename,  reference_field_r, theta_r, kappa_r, period_jump_r);
+    Penner::Field::write_frame_field(output_filename,  reference_field_r, theta_r, kappa_r, period_jump_r);
     output_filename = join_path(output_dir, mesh+"_fn_to_f");
     write_vector(fn_to_f_r, output_filename);
 
