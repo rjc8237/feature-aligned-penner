@@ -13,7 +13,9 @@
 #include <igl/bounding_box_diagonal.h>
 #include <igl/internal_angles.h>
 
+#ifdef ENABLE_VISUALIZATION
 #include "polyscope/surface_mesh.h"
+#endif
 
 using namespace Penner;
 using namespace Penner::Optimization;
@@ -254,6 +256,7 @@ Eigen::MatrixXi tag_cone_corners(
         }
     }
 
+#ifdef ENABLE_VISUALIZATION
     bool show_uv_cones = false;
     if (show_uv_cones)
     {
@@ -299,6 +302,7 @@ Eigen::MatrixXi tag_cone_corners(
 
         polyscope::show();
     }
+#endif
 
     return is_cone;
 }

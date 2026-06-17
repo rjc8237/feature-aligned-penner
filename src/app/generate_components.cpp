@@ -12,9 +12,11 @@
 #include <igl/facet_components.h>
 #include <igl/remove_unreferenced.h>
 #include <CLI/CLI.hpp>
+#ifdef ENABLE_VISUALIZATION
 #include "polyscope/surface_mesh.h"
 #include "polyscope/point_cloud.h"
 #include "polyscope/curve_network.h"
+#endif
 
 using namespace Penner;
 using namespace Penner::Holonomy;
