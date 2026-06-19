@@ -13,8 +13,10 @@
 #include <igl/readOBJ.h>
 #include <CLI/CLI.hpp>
 
+#ifdef ENABLE_VISUALIZATION
 #include "polyscope/point_cloud.h"
 #include "polyscope/surface_mesh.h"
+#endif
 
 using namespace Penner;
 using namespace Penner::Field;
@@ -102,6 +104,7 @@ int main(int argc, char* argv[])
         field_generator.get_field(marked_metric, vtx_reindex, F_cut, face_reindex, reference_corner, theta, kappa, period_jump);
     }
 
+#ifdef ENABLE_VISUALIZATION
     if (show_field)
     {
         polyscope::init();
@@ -148,6 +151,7 @@ int main(int argc, char* argv[])
         polyscope::show();
         field_generator.get_field(marked_metric, vtx_reindex, F_cut, face_reindex, reference_corner, theta, kappa, period_jump);
     }
+#endif
 
     // write output
     std::string output_filename;
