@@ -23,7 +23,7 @@ if(PROJECT_IS_TOP_LEVEL)
   option(CHECK_VALIDITY "Check validity pre and post conditions" OFF)
   option(BUILD_CURVATURE_METRIC_TESTS "Build tests" ON)
   option(USE_WARNINGS "Compile with warnings" OFF)
-  option(USE_UV_OPTIMIZATION "Add uv optimization library" OFF)
+  option(USE_UV_OPTIMIZATION "Add uv optimization library" ON)
 
   # Set libigl options
   option(LIBIGL_PREDICATES "Use Predicates" ON)
@@ -36,6 +36,10 @@ list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # add core Penner methods
 add_subdirectory(ext/penner-optimization)
+
+if (USE_UV_OPTIMIZATION)
+    add_compile_definitions(USE_UV_OPTIMIZATION)
+endif()
 
 if(NOT ENABLE_VISUALIZATION)
     option(POLYSCOPE_BACKEND_OPENGL3_GLFW OFF)

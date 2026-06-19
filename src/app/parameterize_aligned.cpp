@@ -16,7 +16,7 @@
 #include "polyscope/surface_mesh.h"
 
 using namespace Penner;
-using namespace Penner::Optimization;
+using namespace Penner::Field;
 using namespace Penner::Holonomy;
 using namespace Penner::Feature;
 
@@ -459,9 +459,9 @@ int main(int argc, char* argv[])
     }
 
     // Optionally optimize parameterization 
-#if USE_UV_OPTIMIZATION
     if (optimize)
     {
+#if USE_UV_OPTIMIZATION
         std::ifstream js_in(input_json);
         nlohmann::json config = nlohmann::json::parse(js_in);
         config["model"] = mesh;
@@ -497,8 +497,10 @@ int main(int argc, char* argv[])
             ME,
             config,
             fix_boundary);
-    }
+#else
+        spdlog::warn("uv optimization disabled");
 #endif
+    }
 
     if (show_parameterization) view_seamless_parameterization(V_r, F_r, uv_r, FT_r, "refined mesh", true);
 

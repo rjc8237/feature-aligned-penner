@@ -17,6 +17,7 @@
 #include "polyscope/surface_mesh.h"
 
 using namespace Penner;
+using namespace Penner::Field;
 using namespace Penner::Feature;
 using namespace Penner::Holonomy;
 
